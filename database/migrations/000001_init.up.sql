@@ -1,0 +1,14 @@
+CREATE TABLE authors (
+  id INTEGER PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  created_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE articles (
+  id INTEGER PRIMARY KEY,
+  author_id INTEGER NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (author_id) REFERENCES authors (id)
+);

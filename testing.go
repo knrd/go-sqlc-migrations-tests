@@ -33,7 +33,7 @@ func TestingDBSetup(conStr string) error {
 	if _, err := con.Exec("CREATE USER db_tests_user WITH PASSWORD 'test1234'"); err != nil {
 		return fmt.Errorf("failed to create USER db_tests_user: %w", err)
 	}
-	if _, err := con.Exec("GRANT ALL PRIVILEGES ON DATABASE db_tests TO db_tests_user"); err != nil {
+	if _, err := con.Exec("GRANT ALL PRIVILEGES ON DATABASE db_tests TO db_tests_user; ALTER DATABASE db_tests OWNER TO db_tests_user;"); err != nil {
 		return fmt.Errorf("failed to grant all privileges on database: %w", err)
 	}
 	return nil
@@ -49,7 +49,7 @@ func getMigrationsDriver(db *sql.DB) (*migrate.Migrate, error) {
 		return nil, fmt.Errorf("%w", err)
 	}
 	m, err := migrate.NewWithDatabaseInstance(
-		"file://"+path+"/migrations",
+		"file://"+path+"/database/migrations",
 		"postgres", driver)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup migration: %w", err)
@@ -68,7 +68,7 @@ func TestingTableCreate(conStr string) error {
 
 	m, err := getMigrationsDriver(db)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to setup migrations driver: %w", err)
 	}
 	defer m.Close()
 

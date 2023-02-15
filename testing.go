@@ -145,3 +145,19 @@ func TestSetupTx(t *testing.T) (*sqlc_models.Queries, context.Context, func()) {
 	}
 	return qtx, ctx, cleanup
 }
+
+func TestSetupSubTxFromContext(t *testing.T, ctx context.Context, qtx *sqlc_models.Queries) (*sqlc_models.Queries, *sql.Tx, func()) {
+	t.Helper()
+	tx := ctx.Value(ContextKeyDb).(*sql.DB)
+	txInner, err := tx.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	qtxInner := qtx.WithTx(txInner)
+
+	cleanup := func() {
+		txInner.Rollback()
+	}
+
+	return qtxInner, txInner, cleanup
+}

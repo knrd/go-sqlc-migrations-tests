@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"os"
 	"testing"
 
@@ -10,24 +9,6 @@ import (
 
 // TestMain model package setup/teardonw
 func TestMain(m *testing.M) {
-	flag.Parse()
-
-	adminDbConfig := Postgresql{
-		Host:     "localhost",
-		Port:     15432,
-		DBName:   "postgres",
-		User:     "postgres",
-		Password: "qwerty",
-	}
-
-	testDbConfig := Postgresql{
-		Host:     "localhost",
-		Port:     15432,
-		DBName:   "db_tests",
-		User:     "db_tests_user",
-		Password: "test1234",
-	}
-
 	// for create/drop schema
 	createSchemaCon := adminDbConfig.CreateDSN()
 	// for create database objects

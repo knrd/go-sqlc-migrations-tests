@@ -8,15 +8,17 @@ import (
 	"time"
 )
 
-type Article struct {
+type Balance struct {
 	ID        int32
-	Title     string
+	Amount    int32
+	Email     string
 	CreatedAt time.Time
 }
 
-type Author struct {
-	ID        int32
-	Name      string
-	Email     string
+type BalanceLog struct {
+	ID        int64
+	BalanceID int32
+	Change    int32
+	Note      string
 	CreatedAt time.Time
 }

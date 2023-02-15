@@ -8,4 +8,4 @@ services:
       - POSTGRES_PASSWORD=qwerty
     ports:
       - '15432:5432'
-    command: ["postgres", "-c", "log_statement=all", "-c", "max_connections=2", "-c", "superuser_reserved_connections=1"]
+    command: ["postgres", "-c", "log_statement=all", "-c", "max_connections=10", "-c", "superuser_reserved_connections=1"]

@@ -1,17 +1,19 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
+	"testing"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
-)
 
-// CREATE USER db_tests; -- this user is for test
+	"github.com/knrd/go-sqlc-migrations-tests/database/sqlc_models"
+)
 
 // func commit(db *sql.DB) {
 // 	if _, err := db.Exec("COMMIT"); err != nil {
@@ -27,13 +29,13 @@ func TestingDBSetup(conStr string) error {
 	}
 	defer con.Close()
 
-	if _, err := con.Exec("CREATE DATABASE db_tests"); err != nil {
-		return fmt.Errorf("failed to create DATABASE db_tests: %w", err)
+	if _, err := con.Exec("CREATE DATABASE " + testDbConfig.DBName); err != nil {
+		return fmt.Errorf("failed to create DATABASE %v: %w", testDbConfig.DBName, err)
 	}
-	if _, err := con.Exec("CREATE USER db_tests_user WITH PASSWORD 'test1234'"); err != nil {
-		return fmt.Errorf("failed to create USER db_tests_user: %w", err)
+	if _, err := con.Exec(fmt.Sprintf("CREATE USER %s WITH PASSWORD '%s'", testDbConfig.User, testDbConfig.Password)); err != nil {
+		return fmt.Errorf("failed to create USER %v: %w", testDbConfig.User, err)
 	}
-	if _, err := con.Exec("GRANT ALL PRIVILEGES ON DATABASE db_tests TO db_tests_user; ALTER DATABASE db_tests OWNER TO db_tests_user;"); err != nil {
+	if _, err := con.Exec(fmt.Sprintf("GRANT ALL PRIVILEGES ON DATABASE %s TO %s; ALTER DATABASE %s OWNER TO %s;", testDbConfig.DBName, testDbConfig.User, testDbConfig.DBName, testDbConfig.User)); err != nil {
 		return fmt.Errorf("failed to grant all privileges on database: %w", err)
 	}
 	return nil
@@ -99,11 +101,47 @@ func TestingDBTeardown(conStr string) error {
 	}
 
 	// we can use here migrate.Down() if necessary
-	if _, err := db.Exec("DROP DATABASE IF EXISTS db_tests"); err != nil {
+	if _, err := db.Exec("DROP DATABASE IF EXISTS " + testDbConfig.DBName); err != nil {
 		return fmt.Errorf("failed to drop DATABASE: %w", err)
 	}
-	if _, err := db.Exec("DROP USER IF EXISTS db_tests_user"); err != nil {
+	if _, err := db.Exec("DROP USER IF EXISTS " + testDbConfig.User); err != nil {
 		return fmt.Errorf("failed to drop USER: %w", err)
 	}
 	return nil
+}
+
+type contextKey string
+
+func (c contextKey) String() string {
+	return string(c)
+}
+
+var ContextKeyDb = contextKey("db")
+var ContextKeyTx = contextKey("tx")
+
+// TestSetupTx create tx and cleanup func for test
+func TestSetupTx(t *testing.T) (*sqlc_models.Queries, context.Context, func()) {
+	t.Helper()
+
+	defaultDb := testDbConfig
+	ctx := context.Background()
+
+	db, err := sql.Open("postgres", defaultDb.CreateDSN())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx = context.WithValue(ctx, ContextKeyDb, db)
+	queries := sqlc_models.New(db)
+
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	qtx := queries.WithTx(tx)
+
+	cleanup := func() {
+		tx.Rollback()
+		db.Close()
+	}
+	return qtx, ctx, cleanup
 }

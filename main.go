@@ -12,13 +12,7 @@ import (
 )
 
 func run() error {
-	defaultDb := Postgresql{
-		Host:     "localhost",
-		Port:     15432,
-		DBName:   "postgres",
-		User:     "postgres",
-		Password: "qwerty",
-	}
+	defaultDb := adminDbConfig
 
 	fmt.Println(defaultDb)
 
@@ -35,7 +29,7 @@ func run() error {
 	_ = queries
 
 	// list all authors
-	authors, err := queries.AuthorsGetAll(ctx)
+	authors, err := queries.BalancesGetAll(ctx)
 	if err != nil {
 		return err
 	}

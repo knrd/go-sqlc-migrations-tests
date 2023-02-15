@@ -117,7 +117,8 @@ func (c contextKey) String() string {
 }
 
 var ContextKeyDb = contextKey("db")
-var ContextKeyTx = contextKey("tx")
+
+// var ContextKeyTx = contextKey("tx")
 
 // TestSetupTx create tx and cleanup func for test
 func TestSetupTx(t *testing.T) (*sqlc_models.Queries, context.Context, func()) {
@@ -130,13 +131,13 @@ func TestSetupTx(t *testing.T) (*sqlc_models.Queries, context.Context, func()) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx = context.WithValue(ctx, ContextKeyDb, db)
 	queries := sqlc_models.New(db)
 
 	tx, err := db.Begin()
 	if err != nil {
 		t.Fatal(err)
 	}
+	ctx = context.WithValue(ctx, ContextKeyDb, db)
 	qtx := queries.WithTx(tx)
 
 	cleanup := func() {
@@ -148,8 +149,8 @@ func TestSetupTx(t *testing.T) (*sqlc_models.Queries, context.Context, func()) {
 
 func TestSetupSubTxFromContext(t *testing.T, ctx context.Context, qtx *sqlc_models.Queries) (*sqlc_models.Queries, *sql.Tx, func()) {
 	t.Helper()
-	tx := ctx.Value(ContextKeyDb).(*sql.DB)
-	txInner, err := tx.Begin()
+	db := ctx.Value(ContextKeyDb).(*sql.DB)
+	txInner, err := db.Begin()
 	if err != nil {
 		t.Fatal(err)
 	}

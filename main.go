@@ -29,7 +29,7 @@ func run() error {
 	_ = queries
 
 	// list all authors
-	authors, err := queries.BalancesGetAll(ctx)
+	authors, err := queries.BalancesSelectAll(ctx)
 	if err != nil {
 		return err
 	}

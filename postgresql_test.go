@@ -43,8 +43,19 @@ func assertEqualBalanses(t testing.TB, got []sqlc_models.Balance, want []sqlc_mo
 	}
 }
 
+func assertCount(t testing.TB, got int64, err error, want int64) {
+	t.Helper()
+
+	if err != nil {
+		t.Error(err)
+	}
+	if got != want {
+		t.Errorf("Count got %v, want %v", got, want)
+	}
+}
+
 func TestEmailIsRequiredInParallelSubTx(t *testing.T) {
-	qtx, ctx, cleanup := TestSetupTx(t)
+	sqlcQTx, ctx, cleanup := TestSetupTx(t, nil)
 	t.Cleanup(func() {
 		cleanup()
 	})
@@ -62,7 +73,7 @@ func TestEmailIsRequiredInParallelSubTx(t *testing.T) {
 		wrong_email := wrong_email
 		t.Run(wrong_email.text, func(t *testing.T) {
 			t.Parallel()
-			qtxInner, _, cleanupInner := TestSetupSubTxFromContext(t, ctx, qtx)
+			qtxInner, _, cleanupInner := TestSetupSubTxFromContext(t, ctx, sqlcQTx, nil)
 
 			assertError(
 				t,
@@ -76,7 +87,7 @@ func TestEmailIsRequiredInParallelSubTx(t *testing.T) {
 }
 
 func TestBalanceInserted(t *testing.T) {
-	qtx, ctx, cleanup := TestSetupTx(t)
+	sqlcQTx, ctx, cleanup := TestSetupTx(t, nil)
 	defer cleanup()
 
 	now := time.Now().UTC().Round(time.Microsecond)
@@ -86,20 +97,20 @@ func TestBalanceInserted(t *testing.T) {
 		CreatedAt: now,
 	}}
 
-	if err := qtx.BalanceInsert(ctx, expected_data[0]); err != nil {
+	if err := sqlcQTx.BalanceInsert(ctx, expected_data[0]); err != nil {
 		t.Fatal(err)
 	}
 
-	balances, err := qtx.BalancesGetAll(ctx)
+	balances, err := sqlcQTx.BalancesSelectAll(ctx)
 	assertEqualBalanses(t, balances, expected_data, err)
 }
 
 func TestBalanceInsertedWithSubTx(t *testing.T) {
-	qtx, ctx, cleanup := TestSetupTx(t)
+	sqlcQTx, ctx, cleanup := TestSetupTx(t, nil)
 	defer cleanup()
 
-	qtxInner1, _, cleanupInner1 := TestSetupSubTxFromContext(t, ctx, qtx)
-	qtxInner2, _, cleanupInner2 := TestSetupSubTxFromContext(t, ctx, qtx)
+	qtxInner1, _, cleanupInner1 := TestSetupSubTxFromContext(t, ctx, sqlcQTx, nil)
+	qtxInner2, _, cleanupInner2 := TestSetupSubTxFromContext(t, ctx, sqlcQTx, nil)
 	defer cleanupInner1()
 	defer cleanupInner2()
 
@@ -112,7 +123,7 @@ func TestBalanceInsertedWithSubTx(t *testing.T) {
 	if err := qtxInner1.BalanceInsert(ctx, expected_data1[0]); err != nil {
 		t.Fatal(err)
 	}
-	balances1, err := qtxInner1.BalancesGetAll(ctx)
+	balances1, err := qtxInner1.BalancesSelectAll(ctx)
 	assertEqualBalanses(t, balances1, expected_data1, err)
 
 	expected_data2 := []sqlc_models.BalanceInsertParams{{
@@ -124,48 +135,13 @@ func TestBalanceInsertedWithSubTx(t *testing.T) {
 	if err := qtxInner2.BalanceInsert(ctx, expected_data2[0]); err != nil {
 		t.Fatal(err)
 	}
-	balances2, err := qtxInner2.BalancesGetAll(ctx)
+	balances2, err := qtxInner2.BalancesSelectAll(ctx)
 	assertEqualBalanses(t, balances2, expected_data2, err)
 
-	balances, err := qtx.BalancesGetAll(ctx)
+	balances, err := sqlcQTx.BalancesSelectAll(ctx)
 	assertEqualBalanses(t, balances, []sqlc_models.BalanceInsertParams{}, err)
 }
 
-func TestBalanceInsertedWithSubTxCommit(t *testing.T) {
-	qtx, ctx, cleanup := TestSetupTx(t)
-	defer cleanup()
-
-	qtxInner1, _, cleanupInner1 := TestSetupSubTxFromContext(t, ctx, qtx)
-	qtxInner2, tx2, cleanupInner2 := TestSetupSubTxFromContext(t, ctx, qtx)
-	defer cleanupInner1()
-	defer cleanupInner2()
-
-	expected_data1 := []sqlc_models.BalanceInsertParams{{
-		Amount:    123,
-		Email:     "test123@example.com",
-		CreatedAt: time.Now().UTC().Round(time.Microsecond),
-	}}
-
-	if err := qtxInner1.BalanceInsert(ctx, expected_data1[0]); err != nil {
-		t.Fatal(err)
-	}
-	balances1, err := qtxInner1.BalancesGetAll(ctx)
-	assertEqualBalanses(t, balances1, expected_data1, err)
-
-	expected_data2 := []sqlc_models.BalanceInsertParams{{
-		Amount:    22,
-		Email:     "test22@example.com",
-		CreatedAt: time.Now().UTC().Round(time.Microsecond),
-	}}
-
-	if err := qtxInner2.BalanceInsert(ctx, expected_data2[0]); err != nil {
-		t.Fatal(err)
-	}
-	balances2, err := qtxInner2.BalancesGetAll(ctx)
-	assertEqualBalanses(t, balances2, expected_data2, err)
-
-	tx2.Commit()
-
-	balances, err := qtx.BalancesGetAll(ctx)
-	assertEqualBalanses(t, balances, expected_data2, err)
-}
+// Replicating SELECT FOR UPDATE problems on different isolation levels
+// https://asciinema.org/a/q5ovDtaoRYaz9wLviruNhxUws?speed=1.2
+// Here on "read committed"

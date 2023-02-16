@@ -15,7 +15,6 @@ test_with_docker_compose: check sqlc
 
 --docker_compose_down_on_error:
 	docker compose down
-	echo "Tests failed!"
 	exit 123
 .PHONY:--docker_compose_down_on_error
 

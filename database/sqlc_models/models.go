@@ -16,9 +16,10 @@ type Balance struct {
 }
 
 type BalanceLog struct {
-	ID        int64
-	BalanceID int32
-	Change    int32
-	Note      string
-	CreatedAt time.Time
+	ID                  int64
+	BalanceID           int32
+	BalanceBeforeChange int32
+	Change              int32
+	Note                string
+	CreatedAt           time.Time
 }

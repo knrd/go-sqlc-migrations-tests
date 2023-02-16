@@ -10,25 +10,36 @@ import (
 // TestMain model package setup/teardonw
 func TestMain(m *testing.M) {
 	// for create/drop schema
-	createSchemaCon := adminDbConfig.CreateDSN()
+	administratorConnection := typeAdminConnectionStr(adminDbConfig.CreateDSN())
 	// for create database objects
-	createTableCon := testDbConfig.CreateDSN()
+	testUserConnection := typeTestUserConnectionStr(testDbConfig.CreateDSN())
 
-	log.Println("0. TestingDBTeardown(createSchemaCon)")
-	if err := TestingDBTeardown(createSchemaCon); err != nil {
+	log.Println("1. TestingDBDropDatabaseAndUser(administratorConnectionStr)")
+	if err := TestingDBDropDatabaseAndUser(administratorConnection); err != nil {
 		log.Fatal(err)
 	}
-	log.Println("1. TestingDBSetup(createSchemaCon)")
-	if err := TestingDBSetup(createSchemaCon); err != nil {
+	log.Println("2. TestingDBSetup(administratorConnectionStr)")
+	if err := TestingDBSetup(administratorConnection); err != nil {
 		log.Fatal(err)
 	}
-	log.Println("2. TestingTableCreate(createTableCon)")
-	if err := TestingTableCreate(createTableCon); err != nil {
+	log.Println("3. TestingTableCreate(createTableCon)")
+	if err := TestingTableCreate(testUserConnection); err != nil {
 		log.Fatal(err)
 	}
+
+	// now we will run all the tests in the package
 	code := m.Run()
-	log.Println("3. TestingDBTeardown(createSchemaCon)")
-	if err := TestingDBTeardown(createSchemaCon); err != nil {
+
+	log.Println("4. TestingTableNoLeftovers(createTableCon)")
+	if err := TestingTableNoLeftovers(testUserConnection); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("5. TestingDBTeardown(testUserConnectionStr)")
+	if err := TestingDBTeardown(testUserConnection); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("6. TestingDBDropDatabaseAndUser(administratorConnectionStr)")
+	if err := TestingDBDropDatabaseAndUser(administratorConnection); err != nil {
 		log.Fatal(err)
 	}
 	os.Exit(code)
